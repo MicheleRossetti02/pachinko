@@ -1,0 +1,20 @@
+{
+  "name": "pachinko-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --port 5173",
+    "start:all": "concurrently \"cd ../pachinko-backend && npm start\" \"npm run preview\"",
+    "start": "npm run start:all"
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "concurrently": "^8.0.0"
+  }
+}

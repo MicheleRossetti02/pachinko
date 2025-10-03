@@ -1,0 +1,61 @@
+{
+  "prizes": [
+    {
+      "id": "p0",
+      "label": "Niente",
+      "weight": 30,
+      "column": null
+    },
+    {
+      "id": "p1",
+      "label": "Birra",
+      "weight": 20,
+      "column": null
+    },
+    {
+      "id": "p2",
+      "label": "Vino Rosso",
+      "weight": 10,
+      "column": null
+    },
+    {
+      "id": "p3",
+      "label": "Vino Bianco",
+      "weight": 10,
+      "column": null
+    },
+    {
+      "id": "p4",
+      "label": "Rosè",
+      "weight": 10,
+      "column": null
+    },
+    {
+      "id": "p5",
+      "label": "Toast",
+      "weight": 10,
+      "column": null
+    },
+    {
+      "id": "p6",
+      "label": "Nachos",
+      "weight": 10,
+      "column": null
+    }
+  ],
+  "stats": {
+    "plays": 100,
+    "wins": {
+      "p5": 9,
+      "p1": 17,
+      "p0": 41,
+      "p3": 11,
+      "p2": 10,
+      "p6": 9,
+      "p4": 3
+    }
+  },
+  "layout": {
+    "columns": 7
+  }
+}

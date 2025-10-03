@@ -1,0 +1,198 @@
+/* --- LAYOUT GENERALE DELLA PAGINA --- */
+body {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:#140b1a;                       /* sfondo scuro violaceo */
+  color:#f2f2f2;                            /* testo chiaro */
+  display:flex;                             /* centra orizzontalmente il contenuto */
+  align-items:flex-start;
+  justify-content:center;
+  padding:24px;
+}
+
+/* --- CONTENITORE PRINCIPALE DEL BOARD --- */
+.board {
+  width: 820px;
+  background: linear-gradient(180deg,#6b1f6a,#3f0f3e);  /* gradiente viola */
+  padding:16px;
+  border-radius:12px;                        /* bordi arrotondati */
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);    /* ombra esterna */
+}
+
+/* --- RIGA SUPERIORE (header + pulsanti) --- */
+.top-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.controls { display:flex; gap:8px; align-items:center; }
+
+.btn {
+  background:#ffd66b;                       /* giallo acceso */
+  color:#1b0a00;
+  padding:8px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+  border:none;
+}
+
+/* --- GRIGLIA DI GIOCO (celle + pioli + pallina) --- */
+.grid {
+  position:relative;                        /* sistema di riferimento per la pallina */
+  width:100%;
+  height:520px;
+  background: repeating-linear-gradient(     /* texture verticale di righe leggere */
+    180deg,
+    rgba(255,255,255,0.02),
+    rgba(255,255,255,0.02) 28px,
+    transparent 28px,
+    transparent 30px
+  );
+  border-radius:8px;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns: repeat(9, 1fr);    /* default: 9 colonne */
+  gap:6px;
+  padding:12px;
+}
+
+/* --- CELLE DELLA GRIGLIA --- */
+.cell {
+  height: 34px;
+  border-radius:6px;
+  background: rgba(255,255,255,0.03);       /* leggero grigio trasparente */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:visible;                         /* serve per mostrare pioli e premi */
+}
+
+/* --- PIOLI --- */
+.peg {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background: rgba(255,255,255,0.18);
+  box-shadow:0 1px 3px rgba(0,0,0,0.6) inset;
+  position:absolute;                        /* posizione relativa alla cella */
+}
+
+/* --- PRIMA RIGA DELLA GRIGLIA --- */
+.first-row .cell { height: 34px; }
+
+/* --- COLONNA EVIDENZIATA (animazione pre-spin) --- */
+.highlight {
+  outline: 3px solid rgba(255,200,80,0.9);
+  box-shadow: 0 0 14px rgba(255,200,80,0.25);
+  transform:translateY(-2px);
+  transition: all 120ms;
+}
+
+/* --- PALLINA --- */
+.ball {
+  position:absolute;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffffff,
+    #f2d97f 40%,
+    #d98a14 100%
+  );                                       /* effetto "sfera metallica" */
+  left:0;
+  transform: translate(-50%, -50%);        /* centratura con left/top come coordinate */
+  z-index:120;                             /* sopra tutti gli altri elementi */
+  pointer-events:none;                     /* non interferisce con i click */
+  box-shadow:0 8px 18px rgba(0,0,0,0.45);  /* ombra sotto */
+}
+
+/* --- ANIMAZIONE DI DROP (non più usata con fisica reale, ma tenuta per fallback) --- */
+.drop {
+  transition: transform 900ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* --- OFFSET STAGGER DEI PIOLI: righe alternate --- */
+.grid .cell.row-offset-1 .peg { left: 30%; }
+.grid .cell.row-offset-0 .peg { left: 70%; }
+
+/* --- AREA MESSAGGI (risultato spin) --- */
+.result {
+  margin-top:10px;
+  font-weight:700;
+}
+
+/* --- AREA STAFF PANEL --- */
+.staff {
+  margin-top:12px;
+  background: rgba(255,255,255,0.03);
+  padding:10px;
+  border-radius:8px;
+}
+
+input[type="text"], input[type="number"], textarea {
+  padding:8px;
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,0.06);
+  background:transparent;
+  color:inherit;
+  width:100%;
+}
+
+label { font-size:13px; color:#ddd; }
+
+.row { display:flex; gap:8px; }
+.col { flex:1; }
+
+/* --- LISTA PREMI (visualizzazione in basso) --- */
+.prize-list {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+
+.prize-card {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  padding:12px 14px;
+  border-radius:10px;
+  min-width:140px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.prize-label { font-weight:700; }
+.prize-emoji { font-size:18px; }
+
+.win-badge {
+  background:#ffd66b;
+  color:#1b0a00;
+  padding:4px 8px;
+  border-radius:10px;
+  font-weight:700;
+  margin-left:auto;
+}
+
+/* --- STATISTICHE STAFF --- */
+.staff-stats {
+  margin-top:8px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.filler-emoji { opacity:0.95; font-size:18px; }
+.stats { margin-top:10px; font-size:13px; color:#e7e7e7; }
+
+/* --- FOOTER --- */
+footer {
+  margin-top:14px;
+  font-size:12px;
+  color:#cfcfcf;
+  text-align:center;
+}
