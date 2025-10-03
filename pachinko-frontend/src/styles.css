@@ -111,9 +111,9 @@ body {
 }
 
 /* --- ANIMAZIONE DI DROP (non più usata con fisica reale, ma tenuta per fallback) --- */
-.drop {
+/* .drop {
   transition: transform 900ms cubic-bezier(.2,.9,.2,1);
-}
+} */
 
 /* --- OFFSET STAGGER DEI PIOLI: righe alternate --- */
 .grid .cell.row-offset-1 .peg { left: 30%; }
