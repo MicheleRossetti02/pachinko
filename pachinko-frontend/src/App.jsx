@@ -4,7 +4,7 @@ import { prizeEmoji, easeOutQuad, weightedPickLocal, randomizePrizeMap, randomiz
 import Header from './components/Header'
 import Toasts from './components/Toasts'
 import Board from './components/Board'
-import PrizeList from './components/PrizeList'
+// PrizeList rimosso come richiesto
 import StaffPanel from './components/StaffPanel'
 import Footer from './components/Footer'
 
@@ -155,158 +155,215 @@ function vLen(x, y){ return Math.hypot(x, y) || 0.000001 }
     })
   }
 
- function animateDropToColumn(targetCol, onLand){
-  // --- parametri fisici "reali" (puoi regolarli) ---
-  const GRAVITY = 1600;          // px/s^2
-  const AIR     = 0.002;         // attrito aria (0..0.01)
-  const REST_PEG   = 0.55;       // coeff. restituzione su pioli
-  const REST_WALLS = 0.62;       // coeff. restituzione su pareti/pavimento
-  const FRICTION_T = 0.02;       // smorzamento tangenziale all'impatto
-  const SUBSTEPS   = 2;          // integrazione in substep per stabilità
-
-  return new Promise((resolve)=>{
+function animateDropToColumn(targetCol, onLand){
+  return new Promise((resolve) => {
     const grid = gridRef.current, ballEl = ballRef.current;
     if (!grid || !ballEl) { resolve(); return; }
 
-    // geometrie base
+    // Parametri fisici
+    const GRAVITY = 1000;      // più lenta per aumentare la durata
+    const AIR = 0.0018;        // leggera resistenza, mantiene energia per più rimbalzi
+    const REST_PEG = 0.88;     // rimbalzi vivaci sui pioli
+    const REST_WALLS = 0.88;   // rimbalzi vivaci sulle pareti
+    const FRICTION_T = 0.035;  // smorzamento tangenziale moderato
+    const NOISE_MAG = 90;      // intensità del rumore laterale
+    const WIND_FREQ = 4.5;     // frequenza del "vento" laterale
+    const SUBSTEPS = 2;        // numero di sub-step per frame
+    
+    // Geometrie base
     const rectGrid = grid.getBoundingClientRect();
     const cells = grid.querySelectorAll('.cell');
     const cols = layout.columns || 9;
     const rows = Math.floor(cells.length / cols);
-    const targetIndex = (rows - 1) * cols + targetCol;
-    const targetCell  = cells[targetIndex];
-    const rectTarget  = targetCell.getBoundingClientRect();
-
-    // start pos: centro della prima cella della colonna
+    
+    // Dimensioni e limiti
+    const boardW = rectGrid.width, boardH = rectGrid.height;
+    const slotW = boardW / cols;
+    const groundY = boardH - 8; // terreno virtuale poco sopra il bordo
+    
+    // Start pos: centro della prima cella della colonna
     const firstRowCell = cells[targetCol];
+    if (!firstRowCell) { resolve(); return; } // Protezione
+    
     const rectStart = firstRowCell.getBoundingClientRect();
     const startX = rectStart.left + rectStart.width/2 - rectGrid.left;
     const startY = 8; // leggermente sotto il top della griglia
-
-    // final slot range (solo per ricavare in quale bin entra)
-    const boardW = rectGrid.width, boardH = rectGrid.height;
-    const slotW  = boardW / cols;
-    const groundY = boardH - 8; // terreno virtuale poco sopra il bordo
-
-    // pegs (cerchi) con coordinate relative alla griglia
+    
+    // Mappa i pioli in coordinate relative alla griglia
     const pegRadius = 6;
-    const pegs = Array.from(grid.querySelectorAll('.peg')).map(p=>{
+    const pegs = Array.from(grid.querySelectorAll('.peg')).map(p => {
       const r = p.getBoundingClientRect();
       return {
         x: r.left + r.width/2 - rectGrid.left,
-        y: r.top  + r.height/2 - rectGrid.top,
+        y: r.top + r.height/2 - rectGrid.top,
         r: pegRadius
       };
     });
-
-    // stato palla
+    
+    // Stato palla
     const ballRect = ballEl.getBoundingClientRect();
-    const BALL_R = Math.max(8, ballRect.width/2); // usa il diametro reale del tuo elemento
+    const BALL_R = Math.max(8, ballRect.width/2);
     let x = startX, y = startY;
-    let vx = 0, vy = 0;
-
-    // posiziona visivamente la palla all'inizio
+    
+    // Inizializza una piccola velocità orizzontale per evitare cadute perfettamente verticali
+    let vx = (Math.random() - 0.5) * 100;
+    let vy = 0;
+    
+    // Timer per rilevare se la pallina resta bloccata in alto
+    const stuckStartTime = performance.now();
+    const stuckThresholdY = startY + 60;
+    let stuckPushed = false;
+    
+    // Posiziona visivamente la palla all'inizio
     ballEl.style.transition = 'none';
     ballEl.style.left = `${x}px`;
-    ballEl.style.top  = `${y}px`;
+    ballEl.style.top = `${y}px`;
     ballEl.style.transform = 'translate(-50%, -50%)';
-
-    // guida leggerissima verso la colonna target (serve solo ad evitare
-    // derive eccessive se i pioli sono molto asimmetrici)
-    function guideForce(){
-      const desiredX = (targetCol + 0.5) * slotW;
-      const dx = desiredX - x;
-      return dx * 0.0008; // più alto = più “magnetismo” orizzontale
-    }
-
-    // simulazione
-    let last = performance.now();
+    
+    // Cancella eventuale animazione precedente
     if (dropAnimRef.current) cancelAnimationFrame(dropAnimRef.current);
-
-    function step(now){
+    
+    // Simulazione
+    let last = performance.now();
+    
+    const noisePhase = Math.random() * Math.PI * 2;
+    function step(now) {
       let dt = (now - last) / 1000;
       last = now;
-      // clamp per evitare salti enormi su tab inattivo
+      
+      // Clamp per evitare salti enormi su tab inattivo
       dt = Math.min(dt, 0.033);
-
+      
+      // Anti-stallo: se la palla resta troppo tempo nella parte superiore senza cadere
+      if (!stuckPushed && (now - stuckStartTime) > 2000 && y < stuckThresholdY) {
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        vx += dir * 200;    // spinta laterale verso sinistra o destra
+        stuckPushed = true;
+      }
+      
+      // Integrazione fisica con sub-stepping per stabilità
       const hdt = dt / SUBSTEPS;
-      for (let s=0; s<SUBSTEPS; s++){
-        // forze
-        vy += GRAVITY * hdt;
-        vx += guideForce();
+      for (let s = 0; s < SUBSTEPS; s++) {
+        // Forze: gravità + rumore laterale per movimento più imprevedibile
+        const timeSec = now / 1000;
+        const wind = Math.sin(timeSec * WIND_FREQ + noisePhase) * NOISE_MAG; // vento sinusoidale
+        const jitter = (Math.random() - 0.5) * NOISE_MAG * 0.35;             // jitter casuale
 
-        // attrito aria
+        // Integrazione velocità (semi-implicita)
+        vy += GRAVITY * hdt;
+        vx += (wind + jitter) * hdt;
+        
+        // Attrito dell'aria (smorzamento velocità)
         vx *= (1 - AIR);
         vy *= (1 - AIR);
-
-        // integrazione
+        
+        // Integrazione posizione
         x += vx * hdt;
         y += vy * hdt;
-
-        // collisione con pioli (cerchio-cerchio)
-        for (const p of pegs){
-          const dx = x - p.x, dy = y - p.y;
+        
+        // Collisione con i pioli
+        for (const peg of pegs) {
+          const dx = x - peg.x;
+          const dy = y - peg.y;
           const dist = Math.hypot(dx, dy);
-          const minD = BALL_R + p.r;
-          if (dist < minD){
-            // normale
-            const nx = dx / (dist || 1), ny = dy / (dist || 1);
-            // correggi penetrazione
-            const pen = (minD - dist);
-            x += nx * pen;
-            y += ny * pen;
-            // riflessione con restituzione
-            const vN = vDot(vx, vy, nx, ny);
-            const j = -(1 + REST_PEG) * vN;
-            vx += j * nx;
-            vy += j * ny;
-            // smorzamento tangenziale (finto attrito)
-            const tx = -ny, ty = nx;
-            const vT = vDot(vx, vy, tx, ty);
-            vx -= vT * FRICTION_T * tx;
-            vy -= vT * FRICTION_T * ty;
+          const minDist = BALL_R + peg.r;
+          
+          if (dist < minDist) {
+            // Normalizzazione vettore normale
+            const nx = dx / (dist || 1);
+            const ny = dy / (dist || 1);
+            
+            // Correzione penetrazione
+            const penetration = minDist - dist;
+            x += nx * penetration;
+            y += ny * penetration;
+            
+            // Calcolo velocità relativa lungo la normale
+            const vn = vx * nx + vy * ny;
+            
+            // Componenti tangenziali
+            const tx = -ny;
+            const ty = nx;
+            const vt = vx * tx + vy * ty;
+            
+            // Impulso elastico con restituzione
+            if (vn < 0) {
+              // Nuovo impulso normale con restituzione
+              const j = -(1 + REST_PEG) * vn;
+              vx += j * nx;
+              vy += j * ny;
+              
+              // Smorzamento tangenziale (attrito)
+              vx -= vt * FRICTION_T * tx;
+              vy -= vt * FRICTION_T * ty;
+
+              // Piccolo impulso casuale lungo la tangente per aumentare imprevedibilità
+              const randT = (Math.random() - 0.5) * 120;
+              vx += randT * tx * 0.5;
+              vy += randT * ty * 0.5;
+            }
           }
         }
 
-        // pareti (AABB)
-        const leftWall  = BALL_R;
-        const rightWall = boardW - BALL_R;
-        const topWall   = BALL_R;
-        if (x < leftWall){ x = leftWall;  vx = Math.abs(vx) * REST_WALLS; }
-        if (x > rightWall){ x = rightWall; vx = -Math.abs(vx) * REST_WALLS; }
-        if (y < topWall){ y = topWall; vy = Math.abs(vy) * REST_WALLS; }
-
-        // pavimento / bins
-        if (y > groundY - BALL_R){
+        // Limita la velocità massima per evitare salti irrealistici
+        const maxSpeed = 1200;
+        const spd = Math.hypot(vx, vy);
+        if (spd > maxSpeed) { const scale = maxSpeed / spd; vx *= scale; vy *= scale; }
+        
+        // Collisione con le pareti laterali
+        if (x < BALL_R) {
+          x = BALL_R;
+          vx = Math.abs(vx) * REST_WALLS;
+        } else if (x > boardW - BALL_R) {
+          x = boardW - BALL_R;
+          vx = -Math.abs(vx) * REST_WALLS;
+        }
+        
+        // Collisione con il tetto
+        if (y < BALL_R) {
+          y = BALL_R;
+          vy = Math.abs(vy) * REST_WALLS;
+        }
+        
+        // Collisione con il pavimento e "tubo" di cattura
+        if (y >= groundY - BALL_R) {
+          // Aggancia la pallina al tubo della colonna in cui è caduta
           y = groundY - BALL_R;
-          vy = -Math.abs(vy) * REST_WALLS;
 
-          // se l'energia è bassa, consideriamo “atterrato”
-          const speed = vLen(vx, vy);
-          if (speed < 40){
-            // aggancia allo slot più vicino
-            const idx = Math.max(0, Math.min(cols-1, Math.floor(x / slotW)));
-            // piccola animazione di assestamento
-            ballEl.style.transition = 'top 150ms cubic-bezier(.2,.9,.2,1)';
-            ballEl.style.left = `${(idx + 0.5) * slotW}px`;
-            ballEl.style.top  = `${y}px`;
-            // chiudi animazione
+          // Determina la colonna/tubo più vicino
+          const idx = Math.max(0, Math.min(cols-1, Math.floor(x / slotW)));
+          const slotCenterX = (idx + 0.5) * slotW;
+
+          // Blocca nel tubo: nessun movimento orizzontale, x centrata nel tubo
+          x = slotCenterX;
+          vx = 0;
+
+          // Smorza rapidamente la velocità verticale fino a fermo
+          vy *= 0.25;
+          
+          // Se praticamente ferma, termina e notifica l'atterraggio
+          if (Math.abs(vy) < 5) {
+            ballEl.style.transition = 'none';
+            ballEl.style.left = `${x}px`;
+            ballEl.style.top = `${y}px`;
+            if (typeof onLand === 'function') onLand(idx);
             if (dropAnimRef.current) cancelAnimationFrame(dropAnimRef.current);
-            try { if (typeof onLand === 'function') onLand(idx); } catch(_){}
-            setTimeout(()=>resolve(), 220);
-            return; // stop loop
+            resolve();
+            return;
           }
         }
       }
-
-      // render palla
+      
+      // Aggiorna la posizione visiva della pallina
       ballEl.style.transition = 'none';
       ballEl.style.left = `${x}px`;
-      ballEl.style.top  = `${y}px`;
-
+      ballEl.style.top = `${y}px`;
+      
+      // Continua l'animazione
       dropAnimRef.current = requestAnimationFrame(step);
     }
-
+    
+    // Avvia l'animazione
     dropAnimRef.current = requestAnimationFrame(step);
   });
 }
@@ -321,8 +378,6 @@ function vLen(x, y){ return Math.hypot(x, y) || 0.000001 }
       <Board layout={layout} highlightCol={highlightCol} prizeMap={prizeMap} fillerMap={fillerMap} prizeEmoji={prizeEmoji} gridRef={gridRef} ballRef={ballRef} />
 
       <div className="result">{message}</div>
-
-      <PrizeList prizes={prizes} prizeEmoji={prizeEmoji} />
 
       {staffMode && (
         <StaffPanel

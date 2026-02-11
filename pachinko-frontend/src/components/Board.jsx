@@ -56,21 +56,58 @@ export default function Board({ layout, highlightCol, prizeMap, fillerMap, prize
                     minHeight: 36
                   }}
                 >
-                  {/* --- 2a) PIOLI (elementi interni su cui la pallina rimbalza) --- */}
-                  <div
-                    className="peg"
-                    style={{
-                      position: 'absolute',
-                      top: pegTop,                    // piccolo offset variabile
-                      left: '50%',                    // centratura orizzontale (mancava)
-                      transform: 'translateX(-50%)',
-                      width: 8,                       // dimensioni visive del peg
-                      height: 8,
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.18)',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.6) inset'
-                    }}
-                  />
+                  {/* --- 2a) PIOLI (griglia uniforme: righe pari centrali, righe dispari doppio peg) --- */}
+                  {!isFirstRow && !isLastRow && (
+                    r % 2 === 0 ? (
+                      // Righe pari: peg centrale
+                      <div
+                        className="peg"
+                        style={{
+                          position: 'absolute',
+                          top: pegTop,
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.18)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.6) inset'
+                        }}
+                      />
+                    ) : (
+                      // Righe dispari: due peg (30% e 70%) per aumentare i rimbalzi
+                      <>
+                        <div
+                          className="peg peg-left"
+                          style={{
+                            position: 'absolute',
+                            top: pegTop,
+                            left: '30%',
+                            transform: 'translateX(-50%)',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.18)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.6) inset'
+                          }}
+                        />
+                        <div
+                          className="peg peg-right"
+                          style={{
+                            position: 'absolute',
+                            top: pegTop,
+                            left: '70%',
+                            transform: 'translateX(-50%)',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.18)',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.6) inset'
+                          }}
+                        />
+                      </>
+                    )
+                  )}
 
                   {/* --- 2b) CONTENUTI DI FONDO: premio (se presente) --- */}
                   {isLastRow && prizeHere && (

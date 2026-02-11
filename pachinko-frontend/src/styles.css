@@ -40,9 +40,9 @@ body {
 
 /* --- GRIGLIA DI GIOCO (celle + pioli + pallina) --- */
 .grid {
-  position:relative;                        /* sistema di riferimento per la pallina */
+  position:flex;                        /* sistema di riferimento per la pallina */
   width:100%;
-  height:520px;
+  height:600px;
   background: repeating-linear-gradient(     /* texture verticale di righe leggere */
     180deg,
     rgba(255,255,255,0.02),
@@ -50,7 +50,9 @@ body {
     transparent 28px,
     transparent 30px
   );
+  border: 2px solid rgba(255,255,255,0.25); /* cornice come nella foto */
   border-radius:8px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.45); /* bordo interno sottile */
   overflow:hidden;
   display:grid;
   grid-template-columns: repeat(9, 1fr);    /* default: 9 colonne */
